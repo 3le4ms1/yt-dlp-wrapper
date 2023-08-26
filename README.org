@@ -6,7 +6,7 @@ Simple wrapper for [[https://github.com/yt-dlp/yt-dlp][yt-dlp]].
 
 Usage:
 #+begin_src powershell
-  ./script.ps1 -[ext] <link1> <link2> <...>
+  $ ./script.ps1 -[ext] <link1> <link2> <...>
 #+end_src
 
 It requires /yt-dlp/ and /ffmpeg/ to be in the PATH env variable.

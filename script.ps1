@@ -84,7 +84,7 @@ function mv_files {
         print_message MSG_INFO "Creating directory: ./$ext_clean"
         $null = New-Item -ItemType Directory -Path "./$ext_clean"
     }
-    $mv_command ="Move-Item ./*.$ext_clean ./$ext_clean/"
+    $mv_command = "Move-Item ./*.$ext_clean ./$ext_clean/"
     eval_command($mv_command)
 }
 
