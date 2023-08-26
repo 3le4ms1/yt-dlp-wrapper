@@ -10,3 +10,5 @@ Usage:
 #+end_src
 
 It requires /yt-dlp/ and /ffmpeg/ to be in the PATH env variable.
+
+It is also my first attempt at making a *CLI* tool.
