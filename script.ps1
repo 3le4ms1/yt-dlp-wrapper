@@ -63,7 +63,7 @@ function download_media {
         foreach ($tuple in $script:option_list) {
             if($script:current_format -eq "-" + $tuple.item1) {
                 # media download
-                $yt_command = $tuple.item2 -replace "#current_link", $script:current_link
+                $yt_command = $tuple.item2 -replace "#current_link", "$($script:current_link)"
                 eval_command($yt_command)
                 print_message MSG_INFO "Media downloaded successfully"
                 mv_files;
@@ -184,14 +184,15 @@ function presentation {
     [OutputType([void])]
     param()
     $intro = @"
-   ______            ______            ______
-  /\_____\          /\_____\          /\_____\          ____
- _\ \__/_/_         \ \__/_/_         \ \__/_/         /\___\
-/\_\ \_____\        /\ \_____\        /\ \___\        /\ \___\
-\ \ \/ / / /        \ \/ / / /        \ \/ / /        \ \/ / /
- \ \/ /\/ /          \/_/\/ /          \/_/_/          \/_/_/
-  \/_/\/_/              \/_/
-"@
+       _      _                      _       _
+      | |    | |                    (_)     | |
+ _   _| |_ __| |______ ___  ___ _ __ _ _ __ | |_
+| | | | __/ _` |______/ __|/ __| '__| | '_ \| __|
+| |_| | || (_| |      \__ \ (__| |  | | |_) | |_
+ \__, |\__\__,_|      |___/\___|_|  |_| .__/ \__|
+  __/ |                               | |
+ |___/                                |_|
+"@;
     write-host -fore RED $intro
     write-host ""
     write-host ""
@@ -200,9 +201,13 @@ function presentation {
 # Main
 function main {
     param()
-    presentation;
-    main_loop;
-    print_message MSG_INFO "Program terminated successfully"
+    try {
+        presentation;
+        main_loop;
+        print_message MSG_INFO "Program terminated successfully"
+    } catch {
+        print_message MSG_WARNING "Program terminated by the user"
+    }
     exit 0
 }
 
