@@ -74,16 +74,14 @@ function download_media {
     }
 }
 
-# fix file name altered in case of playlist_index not present
-# Automatically, yt-dlp adds to the string `NA ' replacing the field
+# fix file name altered in case of playlist_index not present.
+# Automatically, yt-dlp adds to the string `NA ' replacing the field playlist_index
 function fix_file_names {
     [OutputType([void])]
     $files = ls -Filter "NA *.mp3"
     foreach($file in $files) {
-        $command = "Move-Item $($file.Name) "
-        # potrebbe dare problemi, in caso si può provare
-        # $file.Name.replace("NA ", "")
-        $command += $($file.Name -replace "^NA ")
+        $command = "Move-Item '$($file.Name)' '"
+        $command += $($file.Name -replace "^NA ") + "'"
         eval_command($command)
         print_message MSG_INFO "Renamed file successfully"
     }
