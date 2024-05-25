@@ -12,7 +12,7 @@ $script:current_format = ""
 $script:option_list = @(
     [Tuple]::Create("mp3",
                     @"
-yt-dlp -x --audio-format mp3 -f "ba" --embed-metadata --embed-thumbnail #current_link -o ".\%(title)s.%(ext)s"
+yt-dlp -x --audio-format mp3 -f "ba" --embed-metadata --embed-thumbnail #current_link -o ".\%(playlist_index)s %(title)s.%(ext)s"
 "@),
     [Tuple]::Create("mp4",
                     @"
@@ -66,10 +66,26 @@ function download_media {
                 $yt_command = $tuple.item2 -replace "#current_link", "$($script:current_link)"
                 eval_command($yt_command)
                 print_message MSG_INFO "Media downloaded successfully"
+                fix_file_names;
                 mv_files;
                 break
             }
         }
+    }
+}
+
+# fix file name altered in case of playlist_index not present
+# Automatically, yt-dlp adds to the string `NA ' replacing the field
+function fix_file_names {
+    [OutputType([void])]
+    $files = ls -Filter "NA *.mp3"
+    foreach($file in $files) {
+        $command = "Move-Item $($file.Name) "
+        # potrebbe dare problemi, in caso si può provare
+        # $file.Name.replace("NA ", "")
+        $command += $($file.Name -replace "^NA ")
+        eval_command($command)
+        print_message MSG_INFO "Renamed file successfully"
     }
 }
 
@@ -199,7 +215,7 @@ function presentation {
 }
 
 # Main
-function main {
+function _main {
     param()
     try {
         presentation;
@@ -211,4 +227,4 @@ function main {
     exit 0
 }
 
-main;
+_main;
