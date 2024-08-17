@@ -62,8 +62,11 @@ function download_media {
     } else {
         foreach ($tuple in $script:option_list) {
             if($script:current_format -eq "-" + $tuple.item1) {
+                # clear useless signature arguments from link
+                $link = "$($script:current_link)"
+                $link = $link -replace "\?si=[a-zA-Z0-9]*", ""
                 # media download
-                $yt_command = $tuple.item2 -replace "#current_link", "$($script:current_link)"
+                $yt_command = $tuple.item2 -replace "#current_link", $link
                 eval_command($yt_command)
                 print_message MSG_INFO "Media downloaded successfully"
                 fix_file_names;
