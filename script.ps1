@@ -131,15 +131,30 @@ function check_format {
     return $false;
 }
 
+function print_help_message {
+    [OutputType([void])]
+    param()
+    $help_message = @"
+ciao
+"@
+    write-host $help_message
+}
+
 # checks if the first argument is a file format, and skips until it finds a
 # valid one
 function check_begin_arguments {
     [OutputType([void])]
     param()
-    if($script:arguments.length -le 1) {
+    # if($script:arguments.length -le 0)
+    if($script:arguments.length -le 0) {
         print_message MSG_ERROR "Not enough parameters"
         print_message MSG_INFO "Usage: -<fmt> <video link>"
+        print_message MSG_INFO "Usage: In alternative provide parameter --help to get help"
         exit 1
+    }
+    if($script:arguments[0] -eq "--help") {
+        print_help_message
+        exit 0
     }
     if(-not $(check_format($script:arguments[0]))) {
         print_message MSG_WARNING "No format found to start with"
@@ -182,6 +197,7 @@ function main_loop {
     param()
 
     check_begin_arguments;
+    presentation;
     while($script:current_index -le $($script:arguments.length - 1)) {
         if(check_format($script:arguments[$script:current_index])) {
             # file format case
@@ -219,11 +235,12 @@ function presentation {
 function _main {
     param()
     try {
-        presentation;
         main_loop;
         print_message MSG_INFO "Program terminated successfully"
     } catch {
-        print_message MSG_WARNING "Program terminated by the user"
+        print_message MSG_WARNING $error
+        print_message MSG_WARNING "Program terminated abnormally"
+        $error.clear()
     }
     exit 0
 }
