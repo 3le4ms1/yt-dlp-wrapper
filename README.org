@@ -2,13 +2,11 @@
 #+AUTHOR: Ismaele De Giorgi
 #+DATE: <2023-08-26 sab>
 
-Simple wrapper for [[https://github.com/yt-dlp/yt-dlp][yt-dlp]].
+Simple wrapper for [[https://github.com/yt-dlp/yt-dlp][yt-dlp]] written in Powershell.
 
 Usage:
 #+begin_src powershell
-  $ ./script.ps1 -[ext] <link1> <link2> <...>
+  $ ./script.ps1 <fmt> <media_link> ... [-<fmt> <media_link> ...] ...
 #+end_src
 
-It requires /yt-dlp/ and /ffmpeg/ to be in the PATH env variable.
-
-It is also my first attempt at making a *CLI* tool.
+It requires [[https://github.com/yt-dlp/yt-dlp][yt-dlp]] and [[https://github.com/FFmpeg/FFmpeg][ffmpeg]] to be reachable.
