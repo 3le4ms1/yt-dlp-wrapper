@@ -45,7 +45,7 @@ function print_message {
             write-host -fore MAGENTA    $("[DEBUG] "   + $($message))
         }
         default {
-            write-host -fore GRAY       $("[_] "       + $($message))
+            write-host -fore GRAY       $("[>_>] "     + $($message))
         }
     }
 }
@@ -62,16 +62,16 @@ function download_media {
     } else {
         foreach ($tuple in $script:option_list) {
             if($script:current_format -eq "-" + $tuple.item1) {
-                # clear useless signature arguments from link
+                # clear useless signature arguments from yt link
                 $link = "$($script:current_link)"
                 $link = $link -replace "\?si=[a-zA-Z0-9]*", ""
                 # media download
-                $yt_command = $tuple.item2 -replace "#current_link", $link
+                $yt_command = $tuple.item2 -replace "#current_link", "'$link'"
                 eval_command($yt_command)
                 print_message MSG_INFO "Media downloaded successfully"
                 fix_file_names;
                 mv_files;
-                break
+                break;
             }
         }
     }
@@ -79,6 +79,7 @@ function download_media {
 
 # fix file name altered in case of playlist_index not present.
 # Automatically, yt-dlp adds to the string `NA ' replacing the field playlist_index
+# TODO: fix edge case when $file.Name contains `'' and
 function fix_file_names {
     [OutputType([void])]
     $files = ls -Filter "NA *.mp3"
@@ -107,24 +108,27 @@ function mv_files {
 
 # checks a command and evaluates it
 function eval_command {
-    [OutputType([void])]
+    [OutputType([Boolean])]
     param([string]$command)
-    if ($command[0] -eq '"') {
-        print_message MSG_INFO $("Executing command: " + $command)
-        Invoke-Expression "& $command"
-    }
-    else {
-        print_message MSG_INFO $("Executing command: " + $command)
-        Invoke-Expression $command
-    }
+
+    # if ($command[0] -eq '"') {
+    #     print_message MSG_INFO $("Executing command: " + $command)
+    #     print_message MSG_DEBUG 'command contiene il carattere "'
+    #     Invoke-Expression "& "$command""
+    # }
+    # else {
+    print_message MSG_INFO $("Executing command: " + $command)
+    Invoke-Expression $command
+    return $?
+    # }
 }
 
 # checks if a flag given is a valid file format
 function check_format {
     [OutputType([Boolean])]
-    param([String]$ext)
+    param([String]$ext_flag)
     foreach ($tuple in $script:option_list) {
-        if($ext -eq "-" + $tuple.Item1) {
+        if($ext_flag -eq ("-" + $tuple.Item1)) {
            return $true;
         }
     }
@@ -135,7 +139,14 @@ function print_help_message {
     [OutputType([void])]
     param()
     $help_message = @"
-ciao
+usage: ./script.ps1 <fmt> <media_link> ... [-<fmt> <media_link> ...] ...
+Where fmt is the output format of the media conversion.
+
+The formats supported are:
+  -mp3    lossy audio format
+  -mp4    lossy video format
+
+The quality of the final media is the best yt-dlp can generate.
 "@
     write-host $help_message
 }
@@ -145,18 +156,17 @@ ciao
 function check_begin_arguments {
     [OutputType([void])]
     param()
-    # if($script:arguments.length -le 0)
-    if($script:arguments.length -le 0) {
+    if($script:arguments.length -eq 0) {
         print_message MSG_ERROR "Not enough parameters"
-        print_message MSG_INFO "Usage: -<fmt> <video link>"
-        print_message MSG_INFO "Usage: In alternative provide parameter --help to get help"
+        print_message MSG_INFO  "usage: ./script.ps1 <fmt> <media_link> ... [-<fmt> <media_link> ...] ..."
+        print_message MSG_INFO  "usage: In alternative provide parameter --help or -help to print help message"
         exit 1
     }
-    if($script:arguments[0] -eq "--help") {
-        print_help_message
+    elseif(($script:arguments[0] -eq "--help") -or ($script:arguments[0] -eq "-help")) {
+        print_help_message;
         exit 0
     }
-    if(-not $(check_format($script:arguments[0]))) {
+    elseif(-not $(check_format($script:arguments[0]))) {
         print_message MSG_WARNING "No format found to start with"
         print_message MSG_WARNING "Skipping links until valid format"
         skip_until_valid_format;
@@ -196,14 +206,14 @@ function main_loop {
     [OutputType([void])]
     param()
 
-    check_begin_arguments;
     presentation;
+    check_begin_arguments;
     while($script:current_index -le $($script:arguments.length - 1)) {
         if(check_format($script:arguments[$script:current_index])) {
             # file format case
             $script:current_format = $script:arguments[$script:current_index]
         } else {
-            # video link case
+            # media link case
             $script:current_link = $script:arguments[$script:current_index]
             download_media;
         }
@@ -235,6 +245,7 @@ function presentation {
 function _main {
     param()
     try {
+        $error.clear()
         main_loop;
         print_message MSG_INFO "Program terminated successfully"
     } catch {
