@@ -9,6 +9,8 @@ $script:current_link   = ""
 $script:current_index  = 0
 $script:current_format = ""
 
+$script:help_header = "usage: ./script.ps1 <fmt> <media_link> ... [<fmt> <media_link> ...] ..."
+
 $script:option_list = @(
     [Tuple]::Create("mp3",
                     @"
@@ -19,6 +21,8 @@ yt-dlp -x --audio-format mp3 -f "ba" --embed-metadata --embed-thumbnail #current
 yt-dlp --embed-metadata --embed-thumbnail -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" #current_link -o ".\%(title)s.%(ext)s"
 "@)
 )
+
+$script:dependencies = @("ffmpeg", "yt-dlp")
 
 enum Message_Type {
     MSG_INFO
@@ -67,8 +71,11 @@ function download_media {
                 $link = $link -replace "\?si=[a-zA-Z0-9]*", ""
                 # media download
                 $yt_command = $tuple.item2 -replace "#current_link", "'$link'"
-                eval_command($yt_command)
-                print_message MSG_INFO "Media downloaded successfully"
+                if (eval_command($yt_command)) {
+                    print_message MSG_INFO "Media downloaded successfully"
+                } else {
+                    print_message MSG_ERROR "Unable to download Media"
+                }
                 fix_file_names;
                 mv_files;
                 break;
@@ -86,8 +93,11 @@ function fix_file_names {
     foreach($file in $files) {
         $command = "Move-Item '$($file.Name)' '"
         $command += $($file.Name -replace "^NA ") + "'"
-        eval_command($command)
-        print_message MSG_INFO "Renamed file successfully"
+        if (eval_command($command)) {
+            print_message MSG_INFO "File renamed successfully"
+        } else {
+            print_message MSG_INFO "File not renamed successfully: $file.Name"
+        }
     }
 }
 
@@ -103,7 +113,11 @@ function mv_files {
         $null = New-Item -ItemType Directory -Path "./$ext_clean"
     }
     $mv_command = "Move-Item ./*.$ext_clean ./$ext_clean/"
-    eval_command($mv_command)
+    if (eval_command($mv_command)) {
+        print_message MSG_INFO "Cleaned the mess"
+    } else {
+        print_message MSG_ERROR "Mess is still here"
+    }
 }
 
 # checks a command and evaluates it
@@ -111,16 +125,9 @@ function eval_command {
     [OutputType([Boolean])]
     param([string]$command)
 
-    # if ($command[0] -eq '"') {
-    #     print_message MSG_INFO $("Executing command: " + $command)
-    #     print_message MSG_DEBUG 'command contiene il carattere "'
-    #     Invoke-Expression "& "$command""
-    # }
-    # else {
     print_message MSG_INFO $("Executing command: " + $command)
     Invoke-Expression $command
     return $?
-    # }
 }
 
 # checks if a flag given is a valid file format
@@ -139,10 +146,10 @@ function print_help_message {
     [OutputType([void])]
     param()
     $help_message = @"
-usage: ./script.ps1 <fmt> <media_link> ... [-<fmt> <media_link> ...] ...
+${script:help_header}
 Where fmt is the output format of the media conversion.
 
-The formats supported are:
+The formats currently supported are the following:
   -mp3    lossy audio format
   -mp4    lossy video format
 
@@ -158,11 +165,12 @@ function check_begin_arguments {
     param()
     if($script:arguments.length -eq 0) {
         print_message MSG_ERROR "Not enough parameters"
-        print_message MSG_INFO  "usage: ./script.ps1 <fmt> <media_link> ... [-<fmt> <media_link> ...] ..."
+        print_message MSG_INFO  ${script:help_header}
         print_message MSG_INFO  "usage: In alternative provide parameter --help or -help to print help message"
         exit 1
     }
-    elseif(($script:arguments[0] -eq "--help") -or ($script:arguments[0] -eq "-help")) {
+    elseif(($script:arguments[0] -eq "--help") -or
+           ($script:arguments[0] -eq "-help")) {
         print_help_message;
         exit 0
     }
@@ -206,7 +214,6 @@ function main_loop {
     [OutputType([void])]
     param()
 
-    presentation;
     check_begin_arguments;
     while($script:current_index -le $($script:arguments.length - 1)) {
         if(check_format($script:arguments[$script:current_index])) {
@@ -222,22 +229,35 @@ function main_loop {
     check_last_argument;
 }
 
+function check_dependencies {
+    foreach ($dep in $script:dependencies) {
+        $check = $false
+        try {
+            $check = Test-Path (get-command $dep).Source
+        } catch {}
+        if (-not $check) {
+            print_message MSG_ERROR "$dep not found on PATH"
+            print_message MSG_ERROR "Abort"
+            exit 1
+        }
+    }
+}
+
 # writes the startup message
 function presentation {
     [OutputType([void])]
     param()
     $intro = @"
-       _      _                      _       _
-      | |    | |                    (_)     | |
- _   _| |_ __| |______ ___  ___ _ __ _ _ __ | |_
-| | | | __/ _` |______/ __|/ __| '__| | '_ \| __|
-| |_| | || (_| |      \__ \ (__| |  | | |_) | |_
- \__, |\__\__,_|      |___/\___|_|  |_| .__/ \__|
-  __/ |                               | |
- |___/                                |_|
+       _              _  _
+      | |_           | || |
+ _   _|  _|______   _| || | _ _
+| | | | | |______|/ _  || ||  _ \
+| |_| | |_       | |_| || || |_| |
+ \__  |\__)       \__ _||_||  __/
+ ___| |                    | |
+ \___/                     |_|
 "@;
     write-host -fore RED $intro
-    write-host ""
     write-host ""
 }
 
@@ -246,6 +266,8 @@ function _main {
     param()
     try {
         $error.clear()
+        presentation;
+        check_dependencies;
         main_loop;
         print_message MSG_INFO "Program terminated successfully"
     } catch {
@@ -253,6 +275,7 @@ function _main {
         print_message MSG_WARNING "Program terminated abnormally"
         $error.clear()
     }
+
     exit 0
 }
 
