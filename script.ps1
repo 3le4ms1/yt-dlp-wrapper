@@ -21,6 +21,7 @@ yt-dlp -x --audio-format mp3 -f "ba" --embed-metadata --embed-thumbnail #current
 yt-dlp --embed-metadata --embed-thumbnail -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" #current_link -o ".\%(title)s.%(ext)s"
 "@)
 )
+$script:passed_arguments=""
 
 $script:dependencies = @("ffmpeg", "yt-dlp")
 
@@ -113,10 +114,30 @@ function mv_files {
         $null = New-Item -ItemType Directory -Path "./$ext_clean"
     }
     $mv_command = "Move-Item ./*.$ext_clean ./$ext_clean/"
-    if (eval_command($mv_command)) {
-        print_message MSG_INFO "Cleaned the mess"
-    } else {
-        print_message MSG_ERROR "Mess is still here"
+    try{
+        if (eval_command($mv_command)) {
+            print_message MSG_INFO "Cleaned the mess"
+        }
+
+    } catch {
+        # file with same name exists in destination folder
+        print_message MSG_ERROR "Mess is still here. Trying to fix"
+        print_message MSG_WARNING "Salting file name"
+        $child = Get-Childitem "*.$ext_clean"
+        $file = $child.Name
+        $chars = "0123456789ABCDEF".ToCharArray()
+        $salt = ""
+        for ($i = 0; $i -lt 5; $i++) {
+            $salt += $chars[(Get-Random $chars.Length)]
+        }
+        $file_new_name = $file -replace ".$ext_clean", " - $salt.$ext_clean"
+        if (eval_command "Move-Item $file $file_new_name") {
+            if (eval_command($mv_command)) {
+                print_message MSG_INFO "Cleaned the mess"
+            } else {
+                print_message MSG_ERROR "Ness is still here. Unable to fix automatically"
+            }
+        }
     }
 }
 
@@ -125,8 +146,13 @@ function eval_command {
     [OutputType([Boolean])]
     param([string]$command)
 
-    print_message MSG_INFO $("Executing command: " + $command)
-    Invoke-Expression $command
+    $command_and_args = $command
+    if ($command.StartsWith("yt-dlp")) {
+        $command_and_args = $command + $script:passed_arguments
+    }
+
+    print_message MSG_INFO $("Executing command: $command_and_args")
+    Invoke-Expression "$command_and_args"
     return $?
 }
 
@@ -149,11 +175,17 @@ function print_help_message {
 ${script:help_header}
 Where fmt is the output format of the media conversion.
 
-The formats currently supported are the following:
-  -mp3    lossy audio format
-  -mp4    lossy video format
+Misc Arguments:
+  -h|--help  display this help message
+  -xXXX      pass argument XXX directly to yt-dlp
+  -X         reset arguments passed directly to yt-dlp
 
-The quality of the final media is the best yt-dlp can generate.
+Formats:
+The formats currently supported are the following:
+  -mp3       lossy audio format
+  -mp4       lossy video format
+
+The quality of the final media should be the best yt-dlp can generate.
 "@
     write-host $help_message
 }
@@ -216,12 +248,18 @@ function main_loop {
 
     check_begin_arguments;
     while($script:current_index -le $($script:arguments.length - 1)) {
-        if(check_format($script:arguments[$script:current_index])) {
+        $arg = $script:arguments[$script:current_index]
+        if(check_format($arg)) {
             # file format case
-            $script:current_format = $script:arguments[$script:current_index]
+            $script:current_format = $arg
+            print_message MSG_INFO "Extension set: $script:current_format"
+        } elseif($arg.StartsWith("-x")) {
+            $script:passed_arguments+=" " + $arg.Remove(0, 2) + " "
+        } elseif($arg -eq "-X") {
+            $script:passed_arguments = ""
         } else {
             # media link case
-            $script:current_link = $script:arguments[$script:current_index]
+            $script:current_link = $arg
             download_media;
         }
         $script:current_index++
@@ -248,14 +286,14 @@ function presentation {
     [OutputType([void])]
     param()
     $intro = @"
-       _              _  _
-      | |_           | || |
- _   _|  _|______   _| || | _ _
-| | | | | |______|/ _  || ||  _ \
-| |_| | |_       | |_| || || |_| |
- \__  |\__)       \__ _||_||  __/
- ___| |                    | |
- \___/                     |_|
+       _                _  _
+      | |_             | || |
+ _   _|  _| ______  _ _| || | _ _ _
+| | | | |  |______||  _  || ||  _  |
+| |_| | |_         | |_| || || |_| |
+ \__  |\__|        |_ _ _||_||  _ _|
+ ___| |                      | |
+ \___/                       |_|
 "@;
     write-host -fore RED $intro
     write-host ""
@@ -267,11 +305,13 @@ function _main {
     try {
         $error.clear()
         presentation;
+        print_message MSG_INFO "Program terminated successfully"
         check_dependencies;
         main_loop;
         print_message MSG_INFO "Program terminated successfully"
     } catch {
-        print_message MSG_WARNING $error
+        print_message MSG_WARNING $_
+        print_message MSG_WARNING "Line: $($_.InvocationInfo.ScriptLineNumber)"
         print_message MSG_WARNING "Program terminated abnormally"
         $error.clear()
     }
