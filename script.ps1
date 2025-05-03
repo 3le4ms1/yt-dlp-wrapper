@@ -9,7 +9,7 @@ $script:current_link   = ""
 $script:current_index  = 0
 $script:current_format = ""
 
-$script:help_header = "usage: ./script.ps1 <fmt> <media_link> ... [<fmt> <media_link> ...] ..."
+$script:help_header = "usage: ./script.ps1 <format | -h> [<misc_args> ...] <media_link> ..."
 
 $script:option_list = @(
     [Tuple]::Create("mp3",
@@ -90,14 +90,14 @@ function download_media {
 # TODO: fix edge case when $file.Name contains `'' and
 function fix_file_names {
     [OutputType([void])]
-    $files = ls -Filter "NA *.mp3"
+    $files = ls -Filter "NA *.*"
     foreach($file in $files) {
         $command = "Move-Item '$($file.Name)' '"
         $command += $($file.Name -replace "^NA ") + "'"
         if (eval_command($command)) {
             print_message MSG_INFO "File renamed successfully"
         } else {
-            print_message MSG_INFO "File not renamed successfully: $file.Name"
+            print_message MSG_WARNING "File not renamed successfully: $file.Name"
         }
     }
 }
@@ -122,20 +122,25 @@ function mv_files {
     } catch {
         # file with same name exists in destination folder
         print_message MSG_ERROR "Mess is still here. Trying to fix"
-        print_message MSG_WARNING "Salting file name"
-        $child = Get-Childitem "*.$ext_clean"
-        $file = $child.Name
-        $chars = "0123456789ABCDEF".ToCharArray()
-        $salt = ""
-        for ($i = 0; $i -lt 5; $i++) {
-            $salt += $chars[(Get-Random $chars.Length)]
-        }
-        $file_new_name = $file -replace ".$ext_clean", " - $salt.$ext_clean"
-        if (eval_command "Move-Item $file $file_new_name") {
-            if (eval_command($mv_command)) {
-                print_message MSG_INFO "Cleaned the mess"
+        print_message MSG_WARNING "Salting file names"
+        $children = Get-Childitem "*.$ext_clean"
+        foreach($child in $children) {
+            $file = $child.Name
+            $chars = "0123456789ABCDEF".ToCharArray()
+            $salt = ""
+            for ($i = 0; $i -lt 5; $i++) {
+                $salt += $chars[(Get-Random $chars.Length)]
+            }
+            $file_new_name = $file -replace ".$ext_clean", " - $salt.$ext_clean"
+            if (eval_command "Move-Item $file $file_new_name") {
+                print_message MSG_INFO "File renamed succesfully"
+                if (eval_command($mv_command)) {
+                    print_message MSG_INFO "Cleaned the mess"
+                } else {
+                    print_message MSG_ERROR "Ness is still here. Unable to fix automatically"
+                }
             } else {
-                print_message MSG_ERROR "Ness is still here. Unable to fix automatically"
+                print_message MSG_ERROR "Unable to rename file"
             }
         }
     }
@@ -173,17 +178,16 @@ function print_help_message {
     param()
     $help_message = @"
 ${script:help_header}
-Where fmt is the output format of the media conversion.
-
-Misc Arguments:
-  -h|--help  display this help message
-  -xXXX      pass argument XXX directly to yt-dlp
-  -X         reset arguments passed directly to yt-dlp
 
 Formats:
 The formats currently supported are the following:
   -mp3       lossy audio format
   -mp4       lossy video format
+
+Miscellaneous Arguments:
+  -h|--help  display this help message
+  -xXXX      pass argument XXX directly to yt-dlp
+  -X         reset arguments passed directly to yt-dlp
 
 The quality of the final media should be the best yt-dlp can generate.
 "@
@@ -225,7 +229,7 @@ function skip_until_valid_format {
         if(check_format $script:arguments[$script:current_index]) {
             break
         } else {
-            print_message MSG_WARNING "Skipped link: $($script:arguments[$script:current_index])"
+            print_message MSG_WARNING "Skipped arg: $($script:arguments[$script:current_index])"
             $script:current_index++
         }
     }
@@ -268,12 +272,13 @@ function main_loop {
 }
 
 function check_dependencies {
+    [OutputType([void])]
+    param()
+
     foreach ($dep in $script:dependencies) {
-        $check = $false
         try {
-            $check = Test-Path (get-command $dep).Source
-        } catch {}
-        if (-not $check) {
+            $null = Test-Path (get-command $dep).Source
+        } catch {
             print_message MSG_ERROR "$dep not found on PATH"
             print_message MSG_ERROR "Abort"
             exit 1
@@ -301,11 +306,12 @@ function presentation {
 
 # Main
 function _main {
+    [OutputType([void])]
     param()
     try {
         $error.clear()
         presentation;
-        print_message MSG_INFO "Program terminated successfully"
+        print_message MSG_INFO "Starting Program"
         check_dependencies;
         main_loop;
         print_message MSG_INFO "Program terminated successfully"
