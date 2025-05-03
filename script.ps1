@@ -121,8 +121,9 @@ function mv_files {
 
     } catch {
         # file with same name exists in destination folder
-        print_message MSG_ERROR "Mess is still here. Trying to fix"
-        print_message MSG_WARNING "Salting file names"
+        print_message MSG_WARNING "Mess is still here. Trying to fix"
+        print_message MSG_WARNING "Salting file names..."
+
         $children = Get-Childitem "*.$ext_clean"
         foreach($child in $children) {
             $file = $child.Name

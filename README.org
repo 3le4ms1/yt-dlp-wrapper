@@ -6,7 +6,7 @@ Simple wrapper for [[https://github.com/yt-dlp/yt-dlp][yt-dlp]] written in Power
 
 Usage:
 #+begin_src powershell
-  $ ./script.ps1 <fmt> <media_link> ... [-<fmt> <media_link> ...] ...
+  $ ./script.ps1 <format | -h> [<misc_args> ...] <media_link> ...
 #+end_src
 
-It requires [[https://github.com/yt-dlp/yt-dlp][yt-dlp]] and [[https://github.com/FFmpeg/FFmpeg][ffmpeg]] to be reachable.
+It requires [[https://github.com/yt-dlp/yt-dlp][yt-dlp]] and [[https://github.com/FFmpeg/FFmpeg][ffmpeg]] to function properly.
