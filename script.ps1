@@ -9,7 +9,7 @@ $script:current_link   = ""
 $script:current_index  = 0
 $script:current_format = ""
 
-$script:help_header = "usage: ./script.ps1 <format | -h> [<misc_args> ...] <media_link> ..."
+$script:help_header = "usage: ./script.ps1 <format> [misc_args] <media_link>"
 
 $script:option_list = @(
     [Tuple]::Create("mp3",
@@ -87,10 +87,10 @@ function download_media {
 
 # fix file name altered in case of playlist_index not present.
 # Automatically, yt-dlp adds to the string `NA ' replacing the field playlist_index
-# TODO: fix edge case when $file.Name contains `'' and
+# TODO: fix edge case when $file.Name contains `''
 function fix_file_names {
     [OutputType([void])]
-    $files = ls -Filter "NA *.*"
+    $files = get-childitem -Filter "NA *.*"
     foreach($file in $files) {
         $command = "Move-Item '$($file.Name)' '"
         $command += $($file.Name -replace "^NA ") + "'"
@@ -113,7 +113,7 @@ function mv_files {
         print_message MSG_INFO "Creating directory: ./$ext_clean"
         $null = New-Item -ItemType Directory -Path "./$ext_clean"
     }
-    $mv_command = "Move-Item ./*.$ext_clean ./$ext_clean/"
+    $mv_command = "Move-Item './*.$ext_clean' './$ext_clean/'"
     try{
         if (eval_command($mv_command)) {
             print_message MSG_INFO "Cleaned the mess"
@@ -133,7 +133,7 @@ function mv_files {
                 $salt += $chars[(Get-Random $chars.Length)]
             }
             $file_new_name = $file -replace ".$ext_clean", " - $salt.$ext_clean"
-            if (eval_command "Move-Item $file $file_new_name") {
+            if (eval_command "Move-Item '$file' '$file_new_name'") {
                 print_message MSG_INFO "File renamed succesfully"
                 if (eval_command($mv_command)) {
                     print_message MSG_INFO "Cleaned the mess"
@@ -203,10 +203,11 @@ function check_begin_arguments {
     if($script:arguments.length -eq 0) {
         print_message MSG_ERROR "Not enough parameters"
         print_message MSG_INFO  ${script:help_header}
-        print_message MSG_INFO  "usage: In alternative provide parameter --help or -help to print help message"
+        print_message MSG_INFO  "usage: or provide the flag --help to read the instructions"
         exit 1
     }
     elseif(($script:arguments[0] -eq "--help") -or
+           ($script:arguments[0] -eq "-h")     -or
            ($script:arguments[0] -eq "-help")) {
         print_help_message;
         exit 0
@@ -252,6 +253,8 @@ function main_loop {
     param()
 
     check_begin_arguments;
+    presentation;
+    print_message msg_info "Starting program"
     while($script:current_index -le $($script:arguments.length - 1)) {
         $arg = $script:arguments[$script:current_index]
         if(check_format($arg)) {
@@ -259,6 +262,7 @@ function main_loop {
             $script:current_format = $arg
             print_message MSG_INFO "Extension set: $script:current_format"
         } elseif($arg.StartsWith("-x")) {
+            # Remove the head of the argument: -x
             $script:passed_arguments+=" " + $arg.Remove(0, 2) + " "
         } elseif($arg -eq "-X") {
             $script:passed_arguments = ""
@@ -275,15 +279,19 @@ function main_loop {
 function check_dependencies {
     [OutputType([void])]
     param()
+    $missing = $false
 
     foreach ($dep in $script:dependencies) {
         try {
             $null = Test-Path (get-command $dep).Source
         } catch {
-            print_message MSG_ERROR "$dep not found on PATH"
-            print_message MSG_ERROR "Abort"
-            exit 1
+            print_message MSG_ERROR "$dep not found in PATH"
+            $missing = $true
         }
+    }
+    if ($missing) {
+        print_message MSG_ERROR "Abort"
+        exit 1
     }
 }
 
@@ -311,8 +319,6 @@ function _main {
     param()
     try {
         $error.clear()
-        presentation;
-        print_message MSG_INFO "Starting Program"
         check_dependencies;
         main_loop;
         print_message MSG_INFO "Program terminated successfully"

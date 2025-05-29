@@ -9,4 +9,5 @@ Usage:
   $ ./script.ps1 <format | -h> [<misc_args> ...] <media_link> ...
 #+end_src
 
-It requires [[https://github.com/yt-dlp/yt-dlp][yt-dlp]] and [[https://github.com/FFmpeg/FFmpeg][ffmpeg]] to function properly.
+It requires [[https://github.com/yt-dlp/yt-dlp][yt-dlp]] and [[https://github.com/FFmpeg/FFmpeg][ffmpeg]] to be reachable in the *PATH* to function
+properly.
