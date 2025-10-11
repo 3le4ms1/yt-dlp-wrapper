@@ -11,7 +11,8 @@ Usage:
 
 The script requires [[https://github.com/yt-dlp/yt-dlp][yt-dlp]] and [[https://github.com/FFmpeg/FFmpeg][ffmpeg]] to be reachable through the *PATH*
 environment variable to function properly.  Before doing any operation, the
-script will check if the dependencies are installed and are reachable.
+script will check if the dependencies are installed and are reachable, and will
+/scream/ if they are not.
 
 To download them properly on Windows, i suggest to do it via the [[https://www.scoop.sh][scoop.sh]]
 package manager.  On other systems use whatever package manager is available.
