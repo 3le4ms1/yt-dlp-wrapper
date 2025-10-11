@@ -9,7 +9,7 @@ $script:current_link   = ""
 $script:current_index  = 0
 $script:current_format = ""
 
-$script:help_header = "usage: ./script.ps1 <format> [misc_args] <media_link>"
+$script:help_header = "usage: ./script.ps1 -h | [<format> [<misc_args> ...] <media_links> ...] ..."
 
 $script:option_list = @(
     [Tuple]::Create("mp3",
@@ -102,21 +102,31 @@ function fix_file_names {
     }
 }
 
+
+# variable used in case of salting needed when moving files, used in function
+# `mv_files'
+$script:salt_counter = 0
+
 # separates the files in different directories, according to their file type
 function mv_files {
     [OutputType([void])]
     param()
+
     $ext_len = $script:current_format.length - 1
     $ext_clean = $script:current_format.substring(1, $ext_len)
     $is_path = Test-Path "./$ext_clean"
+
     if(-not $is_path) {
         print_message MSG_INFO "Creating directory: ./$ext_clean"
         $null = New-Item -ItemType Directory -Path "./$ext_clean"
     }
+
     $mv_command = "Move-Item './*.$ext_clean' './$ext_clean/'"
+
     try{
         if (eval_command($mv_command)) {
             print_message MSG_INFO "Cleaned the mess"
+            $script:salt_counter = 0
         }
 
     } catch {
@@ -124,21 +134,21 @@ function mv_files {
         print_message MSG_WARNING "Mess is still here. Trying to fix"
         print_message MSG_WARNING "Salting file names..."
 
+        $script:salt_counter += 1
+
         $children = Get-Childitem "*.$ext_clean"
         foreach($child in $children) {
             $file = $child.Name
-            $chars = "0123456789ABCDEF".ToCharArray()
-            $salt = ""
-            for ($i = 0; $i -lt 5; $i++) {
-                $salt += $chars[(Get-Random $chars.Length)]
-            }
+            # formatting salt to add to the filename, padding with 0s until
+            # fourth digit
+            $salt = '{0:d4}' -f $script:salt_counter
             $file_new_name = $file -replace ".$ext_clean", " - $salt.$ext_clean"
             if (eval_command "Move-Item '$file' '$file_new_name'") {
                 print_message MSG_INFO "File renamed succesfully"
                 if (eval_command($mv_command)) {
                     print_message MSG_INFO "Cleaned the mess"
                 } else {
-                    print_message MSG_ERROR "Ness is still here. Unable to fix automatically"
+                    print_message MSG_ERROR "Mess is still here. Unable to fix automatically"
                 }
             } else {
                 print_message MSG_ERROR "Unable to rename file"
