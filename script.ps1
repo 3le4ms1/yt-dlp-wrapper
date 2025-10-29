@@ -23,7 +23,7 @@ yt-dlp --embed-metadata --embed-thumbnail -f "bestvideo[ext=mp4]+bestaudio[ext=m
 )
 $script:passed_arguments=""
 
-$script:dependencies = @("ffmpeg", "yt-dlp")
+$script:dependencies = @("yt-dlp", "ffmpeg", "node|deno|bun|quickjs")
 
 enum Message_Type {
     MSG_INFO
@@ -235,7 +235,7 @@ function check_begin_arguments {
 
 # skips the arguments until it finds a valid file format
 function skip_until_valid_format {
-    [OutputType([Boolean])]
+    [OutputType([void])]
     param()
     while($script:current_index -lt $($script:arguments.length)) {
         if(check_format $script:arguments[$script:current_index]) {
@@ -273,7 +273,7 @@ function main_loop {
             print_message MSG_INFO "Extension set: $script:current_format"
         } elseif($arg.StartsWith("-x")) {
             # Remove the head of the argument: -x
-            $script:passed_arguments+=" " + $arg.Remove(0, 2) + " "
+            $script:passed_arguments += " " + $arg.Remove(0, 2) + " "
         } elseif($arg -eq "-X") {
             $script:passed_arguments = ""
         } else {
@@ -291,14 +291,22 @@ function check_dependencies {
     param()
     $missing = $false
 
-    foreach ($dep in $script:dependencies) {
-        try {
-            $null = Test-Path (get-command $dep).Source
-        } catch {
+    foreach($dep in $script:dependencies) {
+        $executables = $dep.Split("|")
+        $exe_found = $false
+        foreach($exe in $executables) {
+            try {
+                $null = Test-Path (get-command $exe).Source
+                $exe_found = $true
+            } catch {
+            }
+        }
+        if (-not $exe_found) {
             print_message MSG_ERROR "$dep not found in PATH"
             $missing = $true
         }
     }
+
     if ($missing) {
         print_message MSG_ERROR "Abort"
         exit 1
