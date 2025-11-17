@@ -294,10 +294,12 @@ function check_dependencies {
     foreach($dep in $script:dependencies) {
         $executables = $dep.Split("|")
         $exe_found = $false
+        :inner_loop
         foreach($exe in $executables) {
             try {
                 $null = Test-Path (get-command $exe).Source
                 $exe_found = $true
+                break inner_loop;
             } catch {
             }
         }
