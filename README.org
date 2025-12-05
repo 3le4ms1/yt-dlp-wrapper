@@ -14,5 +14,13 @@ environment variable to function properly.  Before doing any operation, the
 script will check if the dependencies are installed and are reachable, and will
 /scream/ if they are not.
 
+Starting from yt-dlp version *2025.11.12*, it needs an additional JavaScript
+runtime present on the machine and reachable via *PATH*.  The script will check
+if one of the following runtimes is installed:
+- node
+- deno
+- bun
+- quickjs
+
 To download them properly on Windows, i suggest to do it via the [[https://www.scoop.sh][scoop.sh]]
 package manager.  On other systems use whatever package manager is available.
